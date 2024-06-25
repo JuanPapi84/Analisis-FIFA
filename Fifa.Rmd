@@ -1,0 +1,320 @@
+# Dataset
+
+En esta libreta vamos a trabajar con un conjunto de datos que contiene los datos de la FIFA de la copa del mundo. Disponéis de los archivos ya descargados en la sección de recursos. Utilizaremos estos tres ficheros:
+
+-   WorldCupMatches.csv: Datos de los partidos disputados
+-   WorldCupPlayers.csv: Datos de los jugadores que han jugado en cada partido
+-   WorldCups.csv: Datos de las copas disputadas y los resultados
+
+# Introducción
+
+Mediante esta libreta vamos a explorar los datos almacenados en estos tres ficheros y a responder preguntas haciendo operaciones y transformaciones con pandas. Además de completar las celdas de código para responder a los ejercicios, cuando así se indique se deberá incluir texto en *markdown* explicando la información o las conclusiones extraídas.
+
+```{r}
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+# Cargamos el conjunto de datos WorldCupMatches
+df_partidos <- read.csv("WorldCupMatches.csv")
+```
+
+## 1. Exploración
+
+Veamos las primeras filas del dataframe, para saber cuantas columnas tenemos y que representa cada una.
+
+```{r}
+head(df_partidos)
+```
+
+Vemos las primeras 6 filas del dataframe y sus columnas, las cuales son 20. Ahora voy a usar la función summary para ver como se comportan los estadísticos.
+
+```{r}
+summary(df_partidos)
+```
+
+Nos indica los valores mínimo, máximos, la media, la mediana, el primer y tercer interquartilo y la cantidad de valores nulos presentes en cada columna.
+
+## 2. Limpieza de datos
+
+Voy a eliminar las filas con valores nulos(NaN) usando la función drop_na.
+
+```{r}
+# Eliminar las filas nulas y almacenar el resultado en un nuevo DataFrame
+df_partidos_clean <- df_partidos %>% drop_na()
+
+# Mostrar las primeras 10 filas del DataFrame limpio
+head(df_partidos_clean, 10)
+
+# Mostrar el número total de filas después de eliminar las filas nulas
+total_filas <- nrow(df_partidos_clean)
+cat("Número total de filas después de eliminar las filas nulas:", total_filas)
+```
+
+Vemos que realmente se eliminaron las filas nulas y nos quedaron 850 filas en total
+
+## 3. Cargar datos adicionales
+
+Voy a cargar los 2 dataframes restantes
+
+```{r}
+df_jugadores <- read.csv("WorldCupPlayers.csv")
+df_copas <- read.csv("WorldCups.csv")
+```
+
+## 4. Rango temporal
+
+El dataframe `df_copas` contiene datos de todos los mundiales disputados. ¿Cuál es el año del mundial más antiguo disputado? ¿Y el año del mundial más reciente?
+
+Veamos ahora que se cargaron los nuevos dataframes el primer año que se disputo la copa del mundo y el ultimo que tiene cargado
+
+```{r}
+min(df_copas$Year)
+```
+
+El primer año que se disputo una copa del mundo fue en 1930
+
+```{r}
+max(df_copas$Year)
+```
+
+Ahora vemos que el último año que tiene registrado el dataframe es del 2014
+
+Ahora veamos todos los datos que se encuentran en cada fila del primer año y del último.
+
+```{r}
+df_copas %>%filter(Year == min(Year))
+```
+
+```{r}
+df_copas %>% filter(Year == max(Year))
+```
+
+Podemos ver que Uruguay fue el primer campeón mundial y que Argentina salio segundo, se hicieron 70 goles y se disputaron 18 partidos. Por otro lado el último campeón del mundo fue Alemania y Argentina también salio segunda pero en este mundial se hicieron 171 goles y se disputaron 64 partidos.
+
+## 5. Asistencia de público
+
+La columna `Attendance` indica la asistencia de público en cada mundial. Pandas ha cargado esta columna como tipo string, ya que los valores indicados contienen puntos como separador de millares. En primer lugar vamos a transformar esta columna para que no contenga el carácter `.`. Posteriormente transformaremos esta columna a formato numérico usando la función `as.numeric`.
+
+```{r}
+df_copas$Attendance <- as.numeric(gsub(".", "", df_copas$Attendance, fixed = TRUE))
+```
+
+Teniendo en cuenta todos los datos de `df_copas`, ¿Cuál fue la mayor asistencia de un mundial? ¿Cuál es la asistencia media?
+
+```{r}
+max_attendance <- max(df_copas$Attendance, na.rm = TRUE)
+mean_attendance <- mean(df_copas$Attendance, na.rm = TRUE)
+
+print(paste("La mayor asistencia de un mundial es:", max_attendance))
+print(paste("La asistencia media es:", mean_attendance))
+```
+
+Vemos que en mayor número de personas que asistieron a un mundial fue de 3.587.538 personas, mientras que la media de personas que asistieron a un mundial es de 1.872.882,35 personas
+
+## 6. Asistencia de público en función del país
+
+Sabemos que, dependiendo del país donde se celebre la copa del mundo, ésta tiene un mayor o menor impacto o relevancia. Vamos a calcular la media de asistencia agrupando por país. Finalmente, ordenar los resultados por orden decreciente de este número medio de asistentes.
+
+```{r}
+attendance_by_country <- df_copas %>%
+  group_by(Country) %>%
+  summarize(mean_attendance = mean(Attendance, na.rm = TRUE)) %>%
+  arrange(desc(mean_attendance))
+
+print(attendance_by_country)
+```
+
+Se puede ver que el top 5 de países con mas asistencia son USA, Sudáfrica, Korea/Japón, Alemania y Brasil y los 5 países con menos asistencia fueron Italia, Chile, Suecia, Suiza y Uruguay. Estos datos son sin tener en cuenta los años en los que se jugaron en donde el los primeros años de la copa del mundo no era tan popular como en la actualidad.
+
+## 7. País con más victorias
+
+Vamos a analizar el número de veces que un país ha ganado la copa del mundo. Transformar el DataFrame `df_copas` para que muestre los diferentes países que han ganado al menos una copa del mundo, y ordena el DataFrame por dicho número de forma descendente usando la función [arrange].
+
+```{r}
+wins_by_country <- df_copas %>%
+  group_by(Winner) %>%
+  summarize(wins = n()) %>%
+  arrange(desc(wins))
+
+print(wins_by_country)
+```
+
+En este caso vemos que Brasil es el país que cuenta con mas copas del mundo (5 copas) y en segundo lugar esta Italia con 4 copas, pero el segundo lugar también lo posee Alemania con 4 copas también, solo que en el cuadro vemos que posee 3 copas como República Federal Alemana y 1 copa como Alemania, esto se debe a que en el año 1949 durante el principio de la guerra fría Alemania se dividió en 2, en República Federal Alemana (Alemania del Oeste) y República Demócrata Alemana (Alemania del Este) hasta su posterior unificación con el fin de la guerra fría el 3 de octubre de 1990 como Alemania.
+
+## 8. Número de países
+
+Vamos a descubrir cuántos países han participado, al menos una vez, en una copa del mundo. Para ello vamos a trabajar con el DataFrame construido anteriormente y a usar la columna Country (que es de tipo factor).
+
+```{r}
+df_paises <- bind_rows(
+  df_partidos %>% 
+    select(Year, Home.Team.Name) %>%
+    rename(Country = Home.Team.Name),
+  df_partidos %>% 
+    select(Year, Away.Team.Name) %>%
+    rename(Country = Away.Team.Name)
+)
+
+# Determine the number of unique countries
+unique_countries <- df_paises %>% distinct(Country)
+num_unique_countries <- nrow(unique_countries)
+
+print(paste("Número de países que han participado al menos una vez:", num_unique_countries))
+```
+
+Podemos observar que el número de países que han participado al menos una vez en la copa del mundo es de 84, si tenemos en cuenta que actualmente hay 195 países en el mundo se puede decir que el 43% de los países participaron por lo menos una vez en la copa del mundo.
+
+## 9. Número de partidos por país
+
+Ahora vamos a descubrir cuántos partidos ha jugado cada país. Operar con el DataFrame para que muestre un país por fila y una columna que indique el número de partidos que ha jugado. Ordenar el DataFrame por dicha columna de forma descendente.
+
+```{r}
+matches_by_country <- df_paises %>%
+  group_by(Country) %>%
+  summarize(matches = n()) %>%
+  arrange(desc(matches))
+
+print(matches_by_country)
+```
+
+En este caso vemos que Brasil es el país que mas veces jugo un partido de la copa del mundo con 7.440 partidos, pero si sumamos los partidos de República Federal Alemania con los de Alemania tienen un total de 110 partidos por lo que quedarían en el segundo puesto y en tercero Italia y cuarto Argentina.
+
+## 10. Partidos jugados por España
+
+Vamos a trabajar a continuación con el DataFrame `df_partidos`y vamos a seleccionar aquellos partidos en los que España ha jugado como `Home Team`, es decir, donde la columna `Home Team` tiene el valor `España`. Recuerda que para la operación de filtrado hay que usar la función.
+
+```{r}
+# Dataframe cuando España jugo de local
+matches_spain_home <- df_partidos %>% filter(Home.Team.Name == "Spain")
+
+# Dataframe cuando España jugo de visitante
+matches_spain_away <- df_partidos %>% filter(Away.Team.Name == "Spain")
+
+# Dataframe de todos los partidos de España local o visitante
+matches_spain <- df_partidos %>% filter(Home.Team.Name == "Spain" | Away.Team.Name == "Spain")
+
+# Mostrar las primeras filas y el número total de filas para cada dataframe
+print("Partidos cuando España jugó de local:")
+print(head(matches_spain_home, 10))
+print(paste("Total de partidos:", nrow(matches_spain_home)))
+
+print("Partidos cuando España jugó de visitante:")
+print(head(matches_spain_away, 10))
+print(paste("Total de partidos:", nrow(matches_spain_away)))
+
+print("Todos los partidos de España:")
+print(head(matches_spain, 10))
+print(paste("Total de partidos:", nrow(matches_spain)))
+
+```
+Vemos solo las 10 primeras filas de cada dataframe para evitar que sea tan largo la salida
+
+
+## Calculo de el vencedor de cada partido
+
+El DataFrame `df_partidos` tiene la información de cada partido, incluyendo los goles marcados por cada equipo, pero no disponemos de una columna que indique si un equipo ganó o perdió. Vamos a crear una columna llamada `Ganador` que indique el nombre del equipo vencedor (con más goles). También podemos encontrar empates, en cuyo caso usaremos `NA` para indicar que desconocemos el vencedor de dicho partido.
+
+```{r}
+# Calcular el vencedor de cada partido
+df_partidos <- df_partidos %>%
+  mutate(
+    Ganador = ifelse(Home.Team.Goals > Away.Team.Goals, as.character(Home.Team.Name),
+                     ifelse(Home.Team.Goals < Away.Team.Goals, as.character(Away.Team.Name), NA))
+  )
+
+# Mostrar solo las primeras 10 filas del DataFrame con la columna Ganador
+head(df_partidos, 10)
+```
+
+## 11. Número de victorias por país
+
+Calcular para cada país el número de partidos ganados. Para ello, usar la función `drop_na` para eliminar las filas correspondientes a partidos donde la columna `Ganador` es `NA`. Ordenar los países por número de victorias de forma descendente.
+
+```{r}
+wins_by_country <- df_partidos %>%
+  drop_na(Ganador) %>%
+  group_by(Ganador) %>%
+  summarize(wins = n()) %>%
+  arrange(desc(wins))
+
+print(wins_by_country)
+```
+
+Se observa que se sigue un patrón en el orden de los países con mejores equipos, en este caso donde vemos que país fue el que mas partidos gano en las copas del mundo tenemos a Brasil primero con 71 juegos ganados, seguido de Alemania con 70 (34+36), Italia y Argentina. Si quisiéramos saber cual es el porcentaje de victoria de cada país deberíamos hacer lo siguiente:
+
+```{r}
+# Realizar las sustituciones en df_partidos y df_países
+df_partidos <- df_partidos %>%
+  mutate(`Home.Team.Name` = ifelse(`Home.Team.Name` == "Germany FR", "Germany", `Home.Team.Name`),
+         `Away.Team.Name` = ifelse(`Away.Team.Name` == "Germany FR", "Germany", `Away.Team.Name`),
+         Ganador = ifelse(Ganador == "Germany FR", "Germany", Ganador))
+
+df_paises <- df_paises %>%
+  mutate(Country = ifelse(Country == "Germany FR", "Germany", Country))
+
+# Verificar las instancias después de la sustitución
+print(unique(df_partidos$`Home.Team.Name`))
+print(unique(df_partidos$`Away.Team.Name`))
+print(unique(df_partidos$Ganador))
+print(unique(df_paises$Country))
+
+# Crear DataFrame con el número de partidos ganados por cada país
+wins_by_country <- df_partidos %>%
+  drop_na(Ganador) %>%
+  group_by(Ganador) %>%
+  summarize(wins = n()) %>%
+  arrange(desc(wins))
+
+# Crear DataFrame con el número total de partidos jugados por cada país
+partidos_por_pais <- df_paises %>%
+  group_by(Country) %>%
+  summarize(partidos = n())
+
+# Unir ambos DataFrames
+ratios <- inner_join(wins_by_country, partidos_por_pais, by = c("Ganador" = "Country"))
+
+# Calcular el ratio de victorias
+ratios <- ratios %>%
+  mutate(ratio = wins / partidos) %>%
+  arrange(desc(ratio))
+
+# Mostrar resultados
+print(ratios)
+```
+
+En este caso lo primero que hice fue unir las filas de Germany FR con las de Germany para tener un solo resultado y poder saber con mayor exactitud el porcentaje de victorias, entonces Alemania quedo representada como Germany.
+
+Habiendo dicho lo anterior podemos ver que Brasil tiene un 65,7% de porcentaje de victorias, Alemania con 63,6% y tercero Argentina con un 54,3%.
+
+## 12 Media de goles por partido para cada país
+
+Otra pregunta que nos podríamos hacer es ¿Qué equipo suele tener un mejor rendimiento ofensivo por partido?, para ello voy a calcular la media de goles por partido de cada país.
+
+```{r}
+# Calcular el total de goles por equipo (como local y visitante)
+total_goles <- df_partidos %>%
+  gather(key = "TeamType", value = "Team", Home.Team.Name, Away.Team.Name) %>%
+  gather(key = "GoalsType", value = "Goals", Home.Team.Goals, Away.Team.Goals) %>%
+  filter((TeamType == "Home.Team.Name" & GoalsType == "Home.Team.Goals") |
+         (TeamType == "Away.Team.Name" & GoalsType == "Away.Team.Goals")) %>%
+  group_by(Team) %>%
+  summarize(total_goles = sum(Goals, na.rm = TRUE))
+
+# Calcular el número total de partidos jugados por cada equipo
+total_partidos <- df_partidos %>%
+  gather(key = "TeamType", value = "Team", Home.Team.Name, Away.Team.Name) %>%
+  group_by(Team) %>%
+  summarize(partidos_jugados = n())
+
+# Unir los DataFrames de total_goles y total_partidos
+media_goles_por_pais <- inner_join(total_goles, total_partidos, by = "Team") %>%
+  mutate(media_goles = total_goles / partidos_jugados) %>%
+  arrange(desc(media_goles))
+
+# Mostrar resultados
+print(media_goles_por_pais)
+```
+
+Sorpresivamente vemos que Hungría es el país que mas goles mete por partidos con una media de 2,71 goles, hay que tener en cuenta que jugo menos partidos que Alemania o Brasil pero eso no quita que tengan un muy buen rendimiento, como otros países que aparecen ahora en los primeros puestos por ejemplo Turquía, Dinamarca, Países bajos. Hay también un país que había pasado por alto en los análisis anteriores y es la Unión Soviética que al igual que Alemania durante la guerra fría cambio de nombre de Rusia a Unión Soviética y luego volvió a llamarse Rusia
